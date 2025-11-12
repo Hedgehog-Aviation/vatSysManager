@@ -22,10 +22,16 @@ namespace vatSysManager
         private static Settings Settings = null;
         private static HttpClient HttpClient = new();
         private static List<ProfileOption> ProfileOptions = [];
+        private static List<PluginResponse> PluginsAvailable = [];
+
         private static string SettingsFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "vatSys Launcher");
         private static string SettingsFile => Path.Combine(SettingsFolder, "Settings.json");
         private static string WorkingDirectory => $"{Settings.ProfileDirectory}\\Temp";
         private static string VatsysExe => $"{Settings.BaseDirectory}\\bin\\vatSys.exe";
+        private static string PluginsBaseDirectory => $"{Settings.BaseDirectory}\\bin\\Plugins";
+        private static string ProfilesUrl => "https://vatsys.sawbe.com/downloads/data/emptyprofiles/profiles.json";
+        private static string PluginsUrl => "https://raw.githubusercontent.com/badvectors/vatSysManager/refs/heads/master/vatSysManager/Plugins.json";
+        private static string PlugingsBaseDirectoryName => "Base Directory (All Profiles)";
 
         public MainWindow()
         {
@@ -49,6 +55,8 @@ namespace vatSysManager
 
             await InitProfiles();
 
+            await InitPlugins();
+
             HomeButton.IsEnabled = true;
             PluginsButton.IsEnabled = true;
             ProfilesButton.IsEnabled = true;
@@ -63,6 +71,112 @@ namespace vatSysManager
 
             VatSysTimer.Start();
         }
+
+        private async Task InitPlugins()
+        {
+            PluginsAvailable.Clear();
+
+            PluginsLoading.Visibility = Visibility.Visible;
+
+            var available = await PluginsGetAvailable();
+
+            PluginsAvailable = available;
+
+            var plugins = new List<string>();
+
+            foreach (var plugin in available)
+            {
+                plugins.Add(plugin.Name);
+            }
+
+            PluginsOptionsComboBox.ItemsSource = plugins;
+
+            PluginsLoading.Visibility = Visibility.Hidden;
+
+            var pluginOptions = new List<PluginInstalled>();
+
+            var installed = PluginsGetInstalled();
+
+            PluginsList.ItemsSource = installed;
+        }
+
+        private async Task<List<PluginResponse>> PluginsGetAvailable()
+        {
+            var plugins = new List<PluginResponse>();
+
+            var response = await HttpClient.GetAsync(PluginsUrl);
+
+            if (!response.IsSuccessStatusCode) return plugins;
+
+            var content = await response.Content.ReadAsStringAsync();
+
+            var pluginResponses = JsonConvert.DeserializeObject<List<PluginResponse>>(content);
+
+            plugins.AddRange(pluginResponses);
+    
+            return plugins;
+        }
+
+        private static List<PluginInstalled> PluginsGetInstalled()
+        {
+            var plugins = new List<PluginInstalled>();
+
+            if (Settings == null || string.IsNullOrWhiteSpace(Settings.BaseDirectory) || string.IsNullOrWhiteSpace(Settings.ProfileDirectory)) return plugins;
+
+            foreach (var directory in Directory.GetDirectories(Settings.ProfileDirectory))
+            {
+                if (directory == WorkingDirectory) continue;
+
+                var profile = directory.Split('\\').Last();
+
+                var subdirectories = Directory.GetDirectories(directory);
+
+                var pluginDirectory = subdirectories.FirstOrDefault(x => x.EndsWith("Plugins"));
+
+                if (pluginDirectory == null) continue;
+
+                foreach (var dir in Directory.GetDirectories(pluginDirectory))
+                {
+                    var files = Directory.GetFiles(dir);
+
+                    foreach (var file in files)
+                    {
+                        var split = file.Split('\\');
+
+                        var pluginAvailable = PluginsAvailable.FirstOrDefault(x => x.DllName == split.Last());
+
+                        if (pluginAvailable != null)
+                        {
+                            plugins.Add(new PluginInstalled(pluginAvailable.Name, profile, dir));
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!Directory.Exists(PluginsBaseDirectory)) return plugins;
+
+            foreach (var dir in Directory.GetDirectories(PluginsBaseDirectory))
+            {
+                var files = Directory.GetFiles(dir);
+
+                foreach (var file in files)
+                {
+                    var split = file.Split('\\');
+
+                    var pluginAvailable = PluginsAvailable.FirstOrDefault(x => x.DllName == split.Last());
+
+                    if (pluginAvailable != null)
+                    {
+                        plugins.Add(new PluginInstalled(pluginAvailable.Name, PlugingsBaseDirectoryName, dir));
+                        break;
+                    }
+                }
+            }
+
+            return plugins;
+        }
+
 
         private async Task InitProfiles()
         {
@@ -95,6 +209,16 @@ namespace vatSysManager
             ProfilesLoading.Visibility = Visibility.Hidden;
 
             ProfilesList.ItemsSource = ProfileOptions;
+
+            var locations = new List<string>
+            {
+                PlugingsBaseDirectoryName
+            };
+            foreach (var profile in profiles.Where(x => x.Installed))
+            {
+                locations.Add(profile.Title);
+            }
+            PluginsLocationsComboBox.ItemsSource = locations;
         }
 
         private void InitSettings()
@@ -273,9 +397,7 @@ namespace vatSysManager
         {
             var profiles = new List<ProfileOption>();
 
-            var url = "https://vatsys.sawbe.com/downloads/data/emptyprofiles/profiles.json";
-
-            var response = await HttpClient.GetAsync(url);
+            var response = await HttpClient.GetAsync(ProfilesUrl);
 
             if (!response.IsSuccessStatusCode) return profiles;
 
@@ -359,6 +481,7 @@ namespace vatSysManager
             HomeCanvas.Visibility = Visibility.Hidden;
             ProfilesCanvas.Visibility = Visibility.Hidden;
             UpdaterCanvas.Visibility = Visibility.Visible;
+            PluginsCanvas.Visibility = Visibility.Hidden;
 
             UpdaterLog.Text = string.Empty;
         }
@@ -385,9 +508,40 @@ namespace vatSysManager
             UpdaterAction(((Button)sender).Tag.ToString());
         }
 
+
+        private async void PluginInstallButton_Click(object sender, RoutedEventArgs e)
+        {
+            var location = PluginsLocationsComboBox.SelectedValue.ToString();
+
+            var pluginName = PluginsOptionsComboBox.SelectedValue.ToString();
+
+            if (location == null || pluginName == null) return;
+
+            if (location == PlugingsBaseDirectoryName)
+            {
+                location = PluginsBaseDirectory;
+            }
+            else
+            {
+                location = $"{Settings.ProfileDirectory}\\{location}\\Plugins";
+            }
+
+            var pluginResponse = PluginsAvailable.FirstOrDefault(x => x.Name == pluginName);
+
+            if (pluginResponse == null) return;
+
+            var success = await RunPluginInstall(pluginResponse, location);
+
+            if (!success) return;
+
+            await InitPlugins();
+
+            PluginsButton_Click(null, null);
+        }
+
         private async void UpdaterAction(string code)
         {
-            var split = code.Split(':');
+            var split = code.Split('|');
 
             if (split[0] == "Delete")
             {
@@ -397,7 +551,7 @@ namespace vatSysManager
 
                     var directory = Path.Combine(Settings.ProfileDirectory, split[2]);
 
-                    var success = RunProfileDelete(directory);
+                    var success = RunDelete(directory);
 
                     if (!success) return;
 
@@ -406,6 +560,22 @@ namespace vatSysManager
                     await InitProfiles();
 
                     ProfilesButton_Click(null, null);
+                }
+                else if (split[1] == "Plugin")
+                {
+                    // delete directory
+
+                    var directory = Path.Combine(Settings.ProfileDirectory, split[2]);
+
+                    var success = RunDelete(split[3]);
+
+                    if (!success) return;
+
+                    // if success return to profile screen
+
+                    await InitPlugins();
+
+                    PluginsButton_Click(null, null);
                 }
             }
             else if (split[0] == "Install")
@@ -443,7 +613,7 @@ namespace vatSysManager
 
                     if (!Path.Exists(directory)) return;
 
-                    var success = RunProfileDelete(directory);
+                    var success = RunDelete(directory);
 
                     if (!success) return;
 
@@ -460,9 +630,54 @@ namespace vatSysManager
             }
         }
 
+        private async Task<bool> RunPluginInstall(PluginResponse pluginResponse, string directory)
+        {
+            UpdaterCanvasMode();
 
+            // create working directory
 
-        private bool RunProfileDelete(string directory)
+            var workingResult = CreateDirectory(WorkingDirectory);
+
+            UpdaterOutput(workingResult);
+
+            if (!workingResult.Success) return false;
+
+            // download plugin
+
+            var downloadResult = await DownloadProfile(pluginResponse.DownloadUrl);
+
+            UpdaterOutput(downloadResult);
+
+            if (!downloadResult.Success) return false;
+
+            // create directory
+
+            var directoryResult = CreateDirectory(Path.Combine(directory, pluginResponse.DirectoryName));
+
+            UpdaterOutput(directoryResult);
+
+            if (!directoryResult.Success) return false;
+
+            // extract profile
+
+            var extractResult = Extract(Path.Combine(WorkingDirectory, "Temp.zip"), Path.Combine(directory, pluginResponse.DirectoryName));
+
+            UpdaterOutput(extractResult);
+
+            if (!extractResult.Success) return false;
+
+            // delete working directory
+
+            var deleteResult = DeleteDirectory(WorkingDirectory);
+
+            UpdaterOutput(deleteResult);
+
+            if (!deleteResult.Success) return false;
+
+            return true;
+        }
+
+        private bool RunDelete(string directory)
         {
             // delete directory
 
@@ -503,7 +718,7 @@ namespace vatSysManager
 
             // extract profile
 
-            var extractResult = Extract(Path.Combine(WorkingDirectory, "Plugin.zip"), Path.Combine(Settings.ProfileDirectory, profileOption.Title));
+            var extractResult = Extract(Path.Combine(WorkingDirectory, "Temp.zip"), Path.Combine(Settings.ProfileDirectory, profileOption.Title));
 
             UpdaterOutput(extractResult);
 
@@ -595,7 +810,7 @@ namespace vatSysManager
             }
             catch (Exception ex)
             {
-                result.Log.Add($"Could not extract plugin: {ex.Message}");
+                result.Log.Add($"Could not extract file: {ex.Message}");
 
                 if (ex.InnerException != null)
                 {
@@ -609,7 +824,7 @@ namespace vatSysManager
 
             foreach (var file in fileEntries)
             {
-                System.IO.File.SetAttributes(file, FileAttributes.Normal);
+                File.SetAttributes(file, FileAttributes.Normal);
             }
 
             result.Log.Add("Extract completed.");
@@ -629,13 +844,13 @@ namespace vatSysManager
             {
                 if (!downloadResponse.IsSuccessStatusCode)
                 {
-                    result.Log.Add($"Could not download plugin: {downloadResponse.StatusCode}.");
+                    result.Log.Add($"Could not download file: {downloadResponse.StatusCode}.");
 
                     return result;
                 }
 
                 using (var stream = await downloadResponse.Content.ReadAsStreamAsync())
-                using (var file = System.IO.File.OpenWrite(System.IO.Path.Combine(WorkingDirectory, "Plugin.zip")))
+                using (var file = File.OpenWrite(Path.Combine(WorkingDirectory, "Temp.zip")))
                 {
                     stream.CopyTo(file);
                 }
@@ -700,7 +915,5 @@ namespace vatSysManager
 
             File.WriteAllText(SettingsFile, settingsFile);
         }
-
-  
     }
 }

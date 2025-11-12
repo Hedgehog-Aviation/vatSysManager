@@ -66,9 +66,9 @@
             </ListBox>
             <TextBlock x:Name="ProfilesLoading" Canvas.Left="420" TextWrapping="Wrap" Text="Loading, please wait." Canvas.Top="21" Visibility="Visible" FontWeight="Bold" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FFFF0101" />
         </Canvas>
-        <Canvas x:Name="PluginsCanvas" Margin="233,0,0,0" Visibility="Visible">
+        <Canvas x:Name="PluginsCanvas" Margin="233,0,0,0" Visibility="Hidden">
             <TextBlock Canvas.Left="10" TextWrapping="Wrap" Text="Plugins" Canvas.Top="10" Width="387" TextAlignment="Left" FontWeight="Bold" FontSize="20"/>
-            <ListBox Name="PluginsList" ScrollViewer.VerticalScrollBarVisibility="Visible" HorizontalAlignment="Center" Canvas.Top="124" VerticalAlignment="Top" Height="274" RenderTransformOrigin="1.591,0.524" Width="528" Canvas.Left="10">
+            <ListBox Name="PluginsList" ScrollViewer.VerticalScrollBarVisibility="Visible" HorizontalAlignment="Center" Canvas.Top="118" VerticalAlignment="Top" Height="280" RenderTransformOrigin="1.591,0.524" Width="528" Canvas.Left="10">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <Grid Margin="0,2" Width="490">
@@ -80,37 +80,30 @@
                                 <ColumnDefinition Width="100" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="{Binding Title}" />
-                            <TextBlock Text="{Binding LocalVersion}" Grid.Column="1" />
+                            <TextBlock Text="{Binding Profile}" Grid.Column="1" />
                             <TextBlock Text="{Binding CurrentVersion}" Grid.Column="2" />
-                            <Button x:Name="Install" Visibility="Collapsed" Grid.Column="4" Content="Install" Click="UpdaterButton_Click" Tag="{Binding InstallCommand}" />
                             <Button x:Name="Update" Visibility="Collapsed" Grid.Column="3" Content="Update" Click="UpdaterButton_Click" Tag="{Binding UpdateCommand}" />
-                            <Button x:Name="Delete" Visibility="Collapsed" Grid.Column="4" Content="Delete" Click="UpdaterButton_Click" Tag="{Binding DeleteCommand}" />
+                            <Button x:Name="Delete" Grid.Column="4" Content="Delete" Click="UpdaterButton_Click" Tag="{Binding DeleteCommand}" />
                         </Grid>
                         <DataTemplate.Triggers>
                             <DataTrigger Binding="{Binding UpdateAvailable}" Value="True">
                                 <Setter TargetName="Update" Property="Visibility" Value="Visible" />
                             </DataTrigger>
-                            <DataTrigger Binding="{Binding Installed}" Value="True">
-                                <Setter TargetName="Delete" Property="Visibility" Value="Visible" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding Installed}" Value="False">
-                                <Setter TargetName="Install" Property="Visibility" Value="Visible" />
-                            </DataTrigger>
                         </DataTemplate.Triggers>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
-            <TextBlock x:Name="PluginsLoading" Canvas.Left="420" TextWrapping="Wrap" Text="Loading, please wait." Canvas.Top="103" Visibility="Visible" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Top" Foreground="#FFFF0101" />
-            <ComboBox Canvas.Left="10" Canvas.Top="63" Width="200" HorizontalAlignment="Center" VerticalAlignment="Top"/>
-            <Button Content="Install" Canvas.Left="428" Canvas.Top="63" Height="22" Width="110" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-            <ComboBox Canvas.Left="218" Canvas.Top="63" Width="200" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+            <TextBlock x:Name="PluginsLoading" Canvas.Left="420" TextWrapping="Wrap" Text="Loading, please wait." Canvas.Top="21" Visibility="Visible" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Top" Foreground="#FFFF0101" />
+            <ComboBox x:Name="PluginsOptionsComboBox" Canvas.Left="10" Canvas.Top="63" Width="198" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+            <Button Content="Install" Canvas.Left="408" Canvas.Top="63" Height="22" Width="100" HorizontalAlignment="Center" VerticalAlignment="Center" Click="PluginInstallButton_Click"/>
+            <ComboBox x:Name="PluginsLocationsComboBox" Canvas.Left="218" Canvas.Top="63" Width="180" HorizontalAlignment="Center" VerticalAlignment="Top"/>
             <TextBlock Canvas.Left="10" TextWrapping="Wrap" Text="Install plugin" Canvas.Top="42" RenderTransformOrigin="-0.18,0.353"/>
-            <TextBlock Canvas.Left="218" TextWrapping="Wrap" Text="Into section" Canvas.Top="42" RenderTransformOrigin="-0.18,0.353" HorizontalAlignment="Left" VerticalAlignment="Center"/>
-            <TextBlock Canvas.Left="10" TextWrapping="Wrap" Text="Current plugins" Canvas.Top="103" RenderTransformOrigin="-0.18,0.353" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+            <TextBlock Canvas.Left="218" TextWrapping="Wrap" Text="Into profile" Canvas.Top="42" RenderTransformOrigin="-0.18,0.353" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+            <TextBlock Canvas.Left="10" TextWrapping="Wrap" Text="Current plugins" Canvas.Top="97" RenderTransformOrigin="-0.18,0.353" HorizontalAlignment="Center" VerticalAlignment="Top"/>
         </Canvas>
-        <Canvas x:Name="UpdaterCanvas" Margin="233,0,0,0" Visibility="Hidden">
+        <Canvas x:Name="UpdaterCanvas" Margin="233,0,0,0" Visibility="Visible">
             <TextBlock Canvas.Left="10" TextWrapping="Wrap" Text="Updater" Canvas.Top="10" Width="387" TextAlignment="Left" FontWeight="Bold" FontSize="20"/>
-            <TextBlock x:Name="UpdaterLog" Canvas.Left="10" TextWrapping="WrapWithOverflow" Text="" Canvas.Top="50"/>
+            <TextBox x:Name="UpdaterLog" Canvas.Left="10" TextWrapping="WrapWithOverflow" Text="" Canvas.Top="50" Height="346" Width="518" HorizontalAlignment="Center" VerticalAlignment="Top"/>
         </Canvas>
     </Grid>
 </Window>
