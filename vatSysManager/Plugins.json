@@ -16,6 +16,10 @@
     "DllName": "VatpacPlugin.dll"
   },
   {
+    "Name": "hedgehog-aviation/lazyatc",
+    "DllName": "LazyATCPlugin.dll"
+  },
+  {
     "Name": "maxrumsey/TrafficInjector",
     "DllName": "TrafficInjector.Plugin.dll"
   }
