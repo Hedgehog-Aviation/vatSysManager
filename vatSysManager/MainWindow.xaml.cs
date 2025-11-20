@@ -1,4 +1,4 @@
-﻿using Microsoft.Win32;
+using Microsoft.Win32;
 using Newtonsoft.Json;
 using System.Diagnostics;
 using System.IO;
@@ -30,7 +30,7 @@ namespace vatSysManager
         private static string VatsysExe => $"{Settings.BaseDirectory}\\bin\\vatSys.exe";
         private static string PluginsBaseDirectory => $"{Settings.BaseDirectory}\\bin\\Plugins";
         private static string ProfilesUrl => "https://vatsys.sawbe.com/downloads/data/emptyprofiles/profiles.json";
-        private static string PluginsUrl => "https://raw.githubusercontent.com/badvectors/vatSysManager/refs/heads/master/vatSysManager/Plugins.json";
+        private static string PluginsUrl => "https://raw.githubusercontent.com/Hedgehog-Aviation/vatSysManager/refs/heads/master/vatSysManager/Plugins.json";
         private static string PlugingsBaseDirectoryName => "Base Directory (All Profiles)";
 
         public MainWindow()
